@@ -63,7 +63,7 @@ function copybook2list(copybook, padding=0) {
         }
         regex = new RegExp('( )+', 'g');
         result = result.replace(regex, ' ');
-        result = _.trimRight(_.trimLeft(result));
+        result = _.trimEnd(_.trimStart(result));
         result = result.split(' ');
         if (defaultValue) {
             regex = new RegExp('[\*]{3}', 'g');
