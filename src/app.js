@@ -4,68 +4,83 @@
  * @since 2017-10-25
  */
 'use strict';
-// Inicio
-console.time('Tempo gasto');
-// Modulos
+// Modules
 var fs = require('fs');
 var _ = require('lodash');
 var path = require('path');
-// Obter arquivo
-var nomeArquivo = (fs.readdirSync('./input_file')[0] || '');
-var arqEnt = ((fs.readFileSync(path.join('./input_file', nomeArquivo), 'utf8')) || '');
-// Arquivo tratado (gerar linhas de codigo do book)
-var linhasCodigo = book2lista(arqEnt);
-// GerarJson
-var codigoJson = copybook2json(linhasCodigo);
-// Gravar arquivo
-var arqSai = JSON.stringify(codigoJson.data, null, 4);
-fs.writeFileSync(path.join('./output_json/', (nomeArquivo.replace((/(\.)(.)+/g), '') + '.json')), arqSai, 'utf8');
-// Fim
-console.log('Execução concluida!')
-console.timeEnd('Tempo gasto');
+// Is it loaded as a module?
+const runningAsScript = !module.parent;
+
+if(runningAsScript) {
+    // Start
+    console.time('Time Spent');
+    // Load Input File
+    var nomeArquivo = (fs.readdirSync('./input_file')[0] || '');
+    var arqEnt = ((fs.readFileSync(path.join('./input_file', nomeArquivo), 'utf8')) || '');
+    // Arquivo tratado (gerar linhas de codigo do book)
+    var linhasCodigo = copybook2list(arqEnt);
+    // Generate JSON
+    var codigoJson = copybook2json(linhasCodigo);
+    // Write File
+    var arqSai = JSON.stringify(codigoJson.data, null, 4);
+    fs.writeFileSync(path.join('./output_json/', (nomeArquivo.replace((/(\.)(.)+/g), '') + '.json')), arqSai, 'utf8');
+    // Fim
+    console.log('Execution Completed')
+    console.timeEnd('Time Spent');
+}
+
+function pipeline(copybook) {
+    const list = copybook2list(copybook);
+    const json = copybook2json(list);
+
+    return json;
+}
+
 /**
- * Gera Lista de linhas, com listas de parametros.
+ * Generates list of lines and parameters.
  * @param {string} copybook COPYBOOK COBOL.
- * @return {array} Lista de listas de parametros do COPYBOOK.
+ * @return {array} List of COPYBOOK parameters.
  */
-function book2lista(copybook) {
-    var linhasBook = (_
-        .reduce(copybook.split('\r\n'), function (acum, l) {
-            if (l.substr(6, 1) !== '*' && !(/^( )+$/g).test(l)) {
-                acum.push(l.substr(6, _.size(l) - 6));
+function copybook2list(copybook, padding=0) {
+    var copybookLines = (_
+        .reduce(copybook.split('\n'), function (acum, l) {
+            if(!padding) l = l.trim()
+            if (l.substr(padding, 1) !== '*' && !(/^( )+$/g).test(l)) {
+                acum.push(l.substr(padding, _.size(l) - padding));
             }
             return acum;
-        }, [])).join('\r\n');
-    var retorno = _.reduce(linhasBook.split('.'), function (acum, o, key) {
+        }, [])).join('\n');
+
+    var returnValue = _.reduce(copybookLines.split('.'), function (acum, o, key) {
         var regex = new RegExp('(\r\n)(\-)( )+(\')', 'g');
-        var resultado = o.replace(regex, '');
+        var result = o.replace(regex, '');
         regex = new RegExp('(\r\n)+', 'g');
-        resultado = resultado.replace(regex, '');
+        result = result.replace(regex, '');
         regex = new RegExp('(\')(.+)(\')', 'g');
-        var valorDefault = resultado.match(regex);
-        if (valorDefault) {
-            resultado = resultado.replace(regex, '***');
+        var defaultValue = result.match(regex);
+        if (defaultValue) {
+            result = result.replace(regex, '***');
         }
         regex = new RegExp('( )+', 'g');
-        resultado = resultado.replace(regex, ' ');
-        resultado = _.trimRight(_.trimLeft(resultado));
-        resultado = resultado.split(' ');
-        if (valorDefault) {
+        result = result.replace(regex, ' ');
+        result = _.trimRight(_.trimLeft(result));
+        result = result.split(' ');
+        if (defaultValue) {
             regex = new RegExp('[\*]{3}', 'g');
-            resultado = _.map(resultado, function (o, key) {
-                return o.replace(regex, valorDefault);
+            result = _.map(result, function (o, key) {
+                return o.replace(regex, defaultValue);
             });
         }
-        if (_.size(resultado[0]) > 0) {
-            acum.push(resultado);
+        if (_.size(result[0]) > 0) {
+            acum.push(result);
         }
         return acum;
     }, []);
-    return retorno;
+    return returnValue;
 }
 /**
- * Converter o COPYBOOK em JSON.
- * @param {array} book Representa o COPYBOOK transformado em array.
+ * Convert the COPYBOOK to JSON.
+ * @param {array} book Array of COPYBOOK contents.
  * @param {number} point Ponteiro de onde sera iniciado a contagem.
  * @returns {array} Retorna lista de campos no formato de JSON.
  */
@@ -73,13 +88,14 @@ function copybook2json(book, point) {
     var startPoint = (point === undefined || point === 0) ? 0 : point + 1;
     var lastPosition = point >> 0;
     var index = 0, lengthBook = book.length, i = 0, j = 0, k = 0;
-    var retorno = [];
+    var returnValue = [];
     while (index < lengthBook) {
         var fieldName = _.snakeCase(book[index][1]);
         var fieldNameMainframe = book[index][1];
         var item, itemsGroup = [], occurs = [], newGroup = {}, objNew = {};
+
         switch (true) {
-            // Tratamento de redefinição com item de grupo
+            // Handle REDEFINE Statements
             case (_.includes(book[index], 'REDEFINES') && !_.includes(book[index], 'PIC')):
                 k = (index === 0) ? 1 : index + 1;
                 itemsGroup = [];
@@ -167,11 +183,11 @@ function copybook2json(book, point) {
                 break;
         };
         if (!_.isEmpty(objNew)) {
-            retorno.push(objNew);
+            returnValue.push(objNew);
         }
         index++;
     };
-    return { data: retorno, start: startPoint, length: lastPosition };
+    return { data: returnValue, start: startPoint, length: lastPosition };
 };
 /**
  * Calcula o tamanho da variavel dentro do COPYBOOK.
@@ -249,3 +265,5 @@ function redefines(objectCopybook, fieldNameMainframe) {
     }
     return pos - 1;
 };
+
+module.exports = { copybook2list, copybook2json, pipeline }
