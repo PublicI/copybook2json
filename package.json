@@ -1,5 +1,5 @@
 {
-  "name": "copybook-2-json",
+  "name": "copybook2json",
   "version": "3.3.0",
   "description": "Transformar COPYBOOK (COBOL) em JSON.",
   "private": true,
