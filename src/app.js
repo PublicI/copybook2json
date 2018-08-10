@@ -53,7 +53,7 @@ function copybook2list(copybook, padding=0) {
             return acum;
         }, [])).join('\n');
 
-    var returnValue = _.reduce(copybookLines.split('.'), function (acum, o, key) {
+    var returnValue = _.reduce(copybookLines.split('\n'), function (acum, o, key) {
         var regex = new RegExp('(\r\n)(\-)( )+(\')', 'g');
         var result = o.replace(regex, '');
         regex = new RegExp('(\r\n)+', 'g');
