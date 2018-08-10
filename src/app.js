@@ -45,6 +45,7 @@ function copybook2list(copybook, padding=0) {
     var copybookLines = (_
         .reduce(copybook.split('\n'), function (acum, l) {
             if(!padding) l = l.trim()
+            l = l.replace(/VALUES?\s\S+/m, '')
             if (l.substr(padding, 1) !== '*' && !(/^( )+$/g).test(l)) {
                 acum.push(l.substr(padding, _.size(l) - padding));
             }
@@ -93,9 +94,10 @@ function copybook2json(book, point) {
         var fieldName = _.snakeCase(book[index][1]);
         var fieldNameMainframe = book[index][1];
         var item, itemsGroup = [], occurs = [], newGroup = {}, objNew = {};
-
         switch (true) {
             // Handle REDEFINE Statements
+            case (_.includes(book[index], '88')):
+                break;
             case (_.includes(book[index], 'REDEFINES') && !_.includes(book[index], 'PIC')):
                 k = (index === 0) ? 1 : index + 1;
                 itemsGroup = [];
